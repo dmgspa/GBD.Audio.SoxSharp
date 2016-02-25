@@ -20,8 +20,8 @@ Namespace Helper
         ''' <param name="Destpath">      The destpath. </param>
         ''' <param name="min_outputKhz"> The minimum output kHz. </param>
         ''' <param name="bit_type">      Type of the bit. </param>
-        Public Shared Sub ConvertToWav(Sourcepath As String, Destpath As String, _
-            Optional min_outputKhz As EffectRate.StdBitRate = EffectRate.StdBitRate.Khz22, _
+        Public Shared Sub ConvertToWav(Sourcepath As String, Destpath As String,
+            Optional min_outputKhz As EffectRate.StdBitRate = EffectRate.StdBitRate.Khz22,
             Optional bit_type As Integer = 16)
 
             If System.IO.File.Exists(Sourcepath) = False Then _
@@ -53,6 +53,67 @@ Namespace Helper
                 ' Override Signal Precision
                 conv.Output.Signal_Output.Precision = 16
                 If bit_type = 8 Then conv.Output.Signal_Output.Precision = 8
+            End SyncLock
+
+            conv.Chain.StartConversion() ' Start the Conversion
+
+            SyncLock ConversionSetup_SyncLock
+                conv.Chain.Close() ' Close the Chain
+                conv.Dispose()
+            End SyncLock
+        End Sub
+
+        ''' <summary> Standard Convert to RAW </summary>
+        ''' <exception cref="ArgumentException"> Thrown when one or more arguments have unsupported or
+        '''                                      illegal values. </exception>
+        ''' <param name="Sourcepath">    The sourcepath. </param>
+        ''' <param name="Destpath">      The destpath. </param>
+        ''' <param name="outputKhz"> The output kHz. </param>
+        ''' <param name="bit_type">      Type of the bit. </param>
+        Public Shared Sub ConvertToRaw(Sourcepath As String, Destpath As String,
+            Optional outputKhz As EffectRate.StdBitRate = EffectRate.StdBitRate.Khz08,
+            Optional bit_type As UInteger = 8,
+            Optional channels As UInteger = 1)
+
+            If System.IO.File.Exists(Sourcepath) = False Then _
+                Throw New ArgumentException("Input File Does Not Exist")
+
+            Dim conv As New FileConvert
+            SyncLock ConversionSetup_SyncLock
+                conv.Input.FilePath = Sourcepath
+                conv.Input.Detect_All()
+                conv.Output.FilePath = Destpath
+                conv.Output.Format = "raw"
+                conv.Output.Detect_All(conv.Input.Signal_Input)
+                conv.Output.Encoding_Output.Encoding = swig.sox_encoding_t.SOX_ENCODING_UNSIGNED
+                conv.Output.Encoding_Output.BitsPerSample = bit_type
+
+                ' Filter the input data
+                If conv.Input.Signal_Input.Rate > outputKhz Then
+                    Dim Eff_LowPass As New EffectLowPass(outputKhz)
+                    conv.Effects.Add(Eff_LowPass)
+                End If
+
+                ' Add the bit rate converter
+                If conv.Input.Signal_Input.Rate <> outputKhz Then
+                    Dim Eff_BirRate As New EffectRate(outputKhz)
+                    conv.Effects.Add(Eff_BirRate)
+                End If
+
+                ' Add the channels mixing
+                If conv.Input.Signal_Input.Channels <> channels Then
+                    Dim Eff_Channels As New EffectChannels(CInt(channels))
+                    conv.Effects.Add(Eff_Channels)
+                End If
+
+                conv.SetupChain()
+                conv.Chain.Open() ' Open the Chain
+                conv.Chain.AttachAll() ' Attach All Effects
+
+                ' Override Signal Precision
+                conv.Output.Signal_Output.Precision = bit_type
+                conv.Output.Signal_Output.Channels = channels
+                conv.Output.Signal_Output.Rate = outputKhz
             End SyncLock
 
             conv.Chain.StartConversion() ' Start the Conversion

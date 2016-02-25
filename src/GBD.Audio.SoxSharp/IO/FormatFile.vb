@@ -101,6 +101,16 @@ Namespace IO
 
             Try
                 OpenHandle = libsox.sox_open_read(filepath, signal_sox, encoding_sox, ftype)
+
+                'S.IORI - SOX seems a little lazy when trying to detecting file format (at least with MP3)
+                ' We need a little hack to stimulate it...
+                If OpenHandle Is Nothing Then
+                    OpenHandle = libsox.sox_open_read(filepath, signal_sox, encoding_sox, "mp3")
+                    If OpenHandle Is Nothing Then
+                        Throw New SoxException("SOX cannot determine the file format")
+                    End If
+                End If
+
                 _SwigStorage = New sox_format_t(OpenHandle.GetswigCPtr)
                 _SignalInfo = New SignalInfo(_SwigStorage.signal)
                 _EncodingInfo = New EncodingInfo(_SwigStorage.encoding)
