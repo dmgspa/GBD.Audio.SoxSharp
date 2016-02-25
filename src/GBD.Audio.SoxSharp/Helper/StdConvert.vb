@@ -68,9 +68,12 @@ Namespace Helper
         '''                                      illegal values. </exception>
         ''' <param name="Sourcepath">    The sourcepath. </param>
         ''' <param name="Destpath">      The destpath. </param>
+        ''' <param name="encoding"> The desired encoding. </param>
         ''' <param name="outputKhz"> The output kHz. </param>
         ''' <param name="bit_type">      Type of the bit. </param>
+        ''' <param name="channels">      Number of channels. </param>
         Public Shared Sub ConvertToRaw(Sourcepath As String, Destpath As String,
+            Optional encoding As swig.sox_encoding_t = swig.sox_encoding_t.SOX_ENCODING_UNSIGNED,
             Optional outputKhz As EffectRate.StdBitRate = EffectRate.StdBitRate.Khz08,
             Optional bit_type As UInteger = 8,
             Optional channels As UInteger = 1)
@@ -85,7 +88,7 @@ Namespace Helper
                 conv.Output.FilePath = Destpath
                 conv.Output.Format = "raw"
                 conv.Output.Detect_All(conv.Input.Signal_Input)
-                conv.Output.Encoding_Output.Encoding = swig.sox_encoding_t.SOX_ENCODING_UNSIGNED
+                conv.Output.Encoding_Output.Encoding = encoding
                 conv.Output.Encoding_Output.BitsPerSample = bit_type
 
                 ' Filter the input data
